@@ -1,0 +1,80 @@
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: ./htp-analyzer-backend
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: htp-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - MODEL_PATH=best.pt
+      - CONFIDENCE_THRESHOLD=0.25
+      - MAX_FILE_SIZE=10485760
+      - TEMP_FILE_CLEANUP_HOURS=1
+      - STATIC_FILES_DIR=static
+      - DEBUG=False
+      - RELOAD=False
+      - ALLOWED_FILE_TYPES=image/jpeg,image/png,image/jpg,image/bmp,image/tiff
+      - ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
+    volumes:
+      # Persist uploaded files and results
+      - backend-static:/app/static
+      - backend-data:/app/data
+      - backend-results:/app/results
+    networks:
+      - htp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend Next.js Service
+  frontend:
+    build:
+      context: ./htp-test-analyzer
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: htp-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - htp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  htp-network:
+    driver: bridge
+
+volumes:
+  backend-static:
+    driver: local
+  backend-data:
+    driver: local
+  backend-results:
+    driver: local
