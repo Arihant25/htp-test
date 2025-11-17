@@ -1,0 +1,6 @@
+[submodule "htp-analyzer-backend"]
+	path = htp-analyzer-backend
+	url = https://github.com/Arihant25/htp-analyzer-backend.git
+[submodule "htp-test-analyzer"]
+	path = htp-test-analyzer
+	url = https://github.com/Arihant25/htp-test-analyzer.git
